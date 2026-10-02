@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>بازی ماشینی زوج و فرد</title>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+        background: #0f0f1a;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        overflow: hidden;
+        font-family: 'Tahoma', 'Segoe UI', sans-serif;
+    }
+
+    #game-container {
+        width: 100%;
+        max-width: 420px;
+        height: 100%;
+        max-height: 780px;
+        aspect-ratio: 9 / 16;
+        background: linear-gradient(to bottom, #56ab2f 0%, #a8e063 100%);
+        position: relative;
+        overflow: hidden;
+        border-radius: 18px;
+        box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    }
+
+    /* جاده */
+    #road {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 58%;
+        height: 100%;
+        background: linear-gradient(to right, #2c2c2c, #3a3a3a, #2c2c2c);
+        box-shadow: inset 8px 0 15px rgba(0,0,0,0.4), inset -8px 0 15px rgba(0,0,0,0.4);
+    }
+
+    .lane-divider {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 6px;
+        height: 200%;
+        background: repeating-linear-gradient(
+            to bottom,
+            #fff 0px,
+            #fff 40px,
+            transparent 40px,
+            transparent 80px
+        );
+        transform: translateX(-50%);
+        opacity: 0.9;
+        will-change: transform;
+    }
+
+    .road-edge {
+        position: absolute;
+        top: 0;
+        width: 8px;
+        height: 100%;
+        background: #f1c40f;
+    }
+    .road-edge.left { left: 0; }
+    .road-edge.right { right: 0; }
+
+    /* تابلو */
+    #sign {
+        position: absolute;
+        top: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, #f1c40f, #f39c12);
+        color: #1a1a1a;
+        padding: 12px 22px;
+        border-radius: 14px;
+        font-size: 17px;
+        font-weight: bold;
+        z-index: 30;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.35), 0 0 0 4px rgba(255,255,255,0.2);
+        text-align: center;
+        min-width: 190px;
+        transition: background 0.3s;
+    }
+
+    #sign.odd {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+    }
+
+    #sign.flicker {
+        animation: signFlicker 0.7s ease-in-out;
+    }
+
+    @keyframes signFlicker {
+        0%   { opacity: 1; filter: brightness(1); }
+        15%  { opacity: 0.3; filter: brightness(2.5); }
+        30%  { opacity: 1; filter: brightness(1); }
+        45%  { opacity: 0.25; filter: brightness(2.8); }
+        60%  { opacity: 1; filter: brightness(1); }
+        75%  { opacity: 0.4; filter: brightness(2); }
+        100% { opacity: 1; filter: brightness(1); }
+    }
+
+    /* HUD */
+    #hud {
+        position: absolute;
+        top: 75px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-between;
+        padding: 0 16px;
+        z-index: 30;
+        color: white;
+        font-size: 15px;
+        font-weight: bold;
+        text-shadow: 0 2px 6px rgba(0,0,0,0.7);
+    }
+
+    /* اسم بازیکن */
+    #player-name-display {
+        position: absolute;
+        bottom: 12px;
+        right: 12px;
+        background: rgba(0,0,0,0.55);
+        color: white;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: bold;
+        z-index: 35;
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    /* کیلومتر دیجیتال */
+    #speedometer {
+        position: absolute;
+        top: 140px;
+        right: 8px;
+        background: linear-gradient(160deg, #111, #222);
+        border: 3px solid #333;
+        border-radius: 12px;
+        padding: 8px 10px;
+        z-index: 30;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5), inset 0 0 10px rgba(0,0,0,0.8);
+        text-align: center;
+        min-width: 70px;
+    }
+
+    #speedometer .label {
+        font-size: 11px;
+        color: #aaa;
+        margin-bottom: 2px;
+    }
+
+    #speed-value {
+        font-size: 26px;
+        font-weight: bold;
+        color: #0f0;
+        font-family: 'Courier New', monospace;
+        text-shadow: 0 0 8px #0f0;
+        letter-spacing: 1px;
+    }
+
+    #speedometer .unit {
+        font-size: 10px;
+        color: #888;
+        margin-top: 1px;
+    }
+
+    /* ماشین */
+    #player {
+        position: absolute;
+        bottom: 160px;
+        left: 50%;
+        width: 58px;
+        height: 95px;
+        transform: translateX(-50%);
+        z-index: 15;
+    }
+
+    .car-body {
+        position: absolute;
+        top: 8px;
+        left: 6px;
+        right: 6px;
+        bottom: 12px;
+        background: linear-gradient(to bottom, #e74c3c 0%, #c0392b 60%, #a93226 100%);
+        border-radius: 18px 18px 12px 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .car-cabin {
+        position: absolute;
+        top: 18px;
+        left: 11px;
+        right: 11px;
+        height: 32px;
+        background: linear-gradient(to bottom, #5dade2, #3498db);
+        border-radius: 10px 10px 6px 6px;
+        box-shadow: inset 0 2px 6px rgba(255,255,255,0.35);
+    }
+
+    .car-headlight {
+        position: absolute;
+        top: 6px;
+        width: 12px;
+        height: 6px;
+        background: #f8f9f9;
+        border-radius: 3px;
+        box-shadow: 0 0 8px #fff;
+    }
+    .car-headlight.left { left: 10px; }
+    .car-headlight.right { right: 10px; }
+
+    .car-taillight {
+        position: absolute;
+        bottom: 10px;
+        width: 10px;
+        height: 5px;
+        background: #e74c3c;
+        border-radius: 2px;
+        box-shadow: 0 0 6px #e74c3c;
+    }
+    .car-taillight.left { left: 11px; }
+    .car-taillight.right { right: 11px; }
+
+    .wheel {
+        position: absolute;
+        width: 11px;
+        height: 22px;
+        background: #1a1a1a;
+        border-radius: 4px;
+        border: 2px solid #444;
+        top: 28px;
+    }
+    .wheel.left { left: 0; }
+    .wheel.right { right: 0; }
+    .wheel.back { top: 58px; }
+
+    /* اعداد */
+    .falling {
+        position: absolute;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 22px;
+        font-weight: bold;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        z-index: 10;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+        border: 3px solid rgba(255,255,255,0.4);
+        transform: translateX(-50%);
+        transition: background 0.4s;
+    }
+
+    .falling.even-mode {
+        background: linear-gradient(135deg, #f1c40f, #f39c12);
+        color: #1a1a1a;
+    }
+
+    .falling.odd-mode {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+    }
+
+    .falling.special {
+        background: linear-gradient(135deg, #9b59b6, #8e44ad) !important;
+        color: white !important;
+        border: 3px solid #fff;
+        box-shadow: 0 0 25px rgba(155, 89, 182, 0.8), 0 6px 16px rgba(0,0,0,0.4);
+        animation: pulse 1.2s infinite;
+    }
+
+    .falling.special::after {
+        content: '★';
+        position: absolute;
+        top: -12px;
+        right: -10px;
+        font-size: 20px;
+        color: #fff;
+        text-shadow: 0 0 8px #9b59b6;
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: translateX(-50%) scale(1); }
+        50% { transform: translateX(-50%) scale(1.08); }
+    }
+
+    /* کنترل‌ها */
+    #controls {
+        position: absolute;
+        bottom: 65px;
+        left: 0;
+        right: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        z-index: 40;
+    }
+
+    .control-row {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+    }
+
+    .btn {
+        width: 68px;
+        height: 56px;
+        background: linear-gradient(to bottom, #34495e, #2c3e50);
+        color: white;
+        border: none;
+        border-radius: 14px;
+        font-size: 24px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 6px 0 #1a252f, 0 8px 16px rgba(0,0,0,0.3);
+        transition: all 0.1s;
+    }
+
+    .btn:active {
+        transform: translateY(4px);
+        box-shadow: 0 2px 0 #1a252f, 0 4px 8px rgba(0,0,0,0.3);
+    }
+
+    /* پیام */
+    #message {
+        position: absolute;
+        top: 42%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0,0,0,0.88);
+        color: white;
+        padding: 16px 26px;
+        border-radius: 16px;
+        font-size: 17px;
+        text-align: center;
+        z-index: 50;
+        display: none;
+        max-width: 82%;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        border: 2px solid rgba(255,255,255,0.15);
+    }
+
+    /* صفحه شروع */
+    #start-screen {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+        color: white;
+        text-align: center;
+        padding: 20px;
+        overflow: hidden;
+    }
+
+    .bg-circle {
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(241, 196, 15, 0.08);
+        animation: float 8s infinite ease-in-out;
+    }
+    .bg-circle:nth-child(1) { width: 180px; height: 180px; top: -40px; left: -40px; }
+    .bg-circle:nth-child(2) { width: 120px; height: 120px; bottom: 80px; right: -30px; animation-delay: 2s; }
+    .bg-circle:nth-child(3) { width: 90px; height: 90px; top: 40%; left: 10%; animation-delay: 4s; }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0) scale(1); }
+        50% { transform: translateY(-25px) scale(1.05); }
+    }
+
+    .start-title {
+        font-size: 28px;
+        font-weight: bold;
+        color: #f1c40f;
+        text-shadow: 0 0 25px rgba(241,196,15,0.5);
+        margin-bottom: 8px;
+        animation: titlePulse 2.5s infinite;
+        z-index: 2;
+    }
+
+    @keyframes titlePulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.04); }
+    }
+
+    .start-subtitle {
+        font-size: 14px;
+        opacity: 0.85;
+        margin-bottom: 12px;
+        z-index: 2;
+    }
+
+    .designer {
+        font-size: 13px;
+        color: #f1c40f;
+        margin-bottom: 15px;
+        z-index: 2;
+        opacity: 0.9;
+    }
+
+    /* ماشین بزرگ صفحه شروع */
+    .start-car {
+        width: 110px;
+        height: 170px;
+        position: relative;
+        margin: 10px 0 20px;
+        z-index: 2;
+        animation: carFloat 3s infinite ease-in-out;
+    }
+
+    @keyframes carFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-12px); }
+    }
+
+    .start-car .car-body {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        bottom: 18px;
+        border-radius: 22px 22px 14px 14px;
+    }
+
+    .start-car .car-cabin {
+        top: 28px;
+        left: 18px;
+        right: 18px;
+        height: 50px;
+        border-radius: 12px 12px 8px 8px;
+    }
+
+    .start-car .car-headlight {
+        top: 12px;
+        width: 18px;
+        height: 9px;
+    }
+    .start-car .car-headlight.left { left: 16px; }
+    .start-car .car-headlight.right { right: 16px; }
+
+    .start-car .car-taillight {
+        bottom: 16px;
+        width: 14px;
+        height: 7px;
+    }
+    .start-car .car-taillight.left { left: 18px; }
+    .start-car .car-taillight.right { right: 18px; }
+
+    .start-car .wheel {
+        width: 16px;
+        height: 32px;
+        top: 40px;
+        border: 3px solid #444;
+    }
+    .start-car .wheel.left { left: 0; }
+    .start-car .wheel.right { right: 0; }
+    .start-car .wheel.back { top: 95px; }
+
+    .name-box {
+        background: rgba(255,255,255,0.1);
+        border: 2px solid rgba(241,196,15,0.5);
+        border-radius: 14px;
+        padding: 12px 18px;
+        width: 80%;
+        max-width: 280px;
+        margin-bottom: 20px;
+        z-index: 2;
+        backdrop-filter: blur(6px);
+    }
+
+    .name-box label {
+        display: block;
+        font-size: 14px;
+        margin-bottom: 8px;
+        color: #f1c40f;
+    }
+
+    .name-box input {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.15);
+        color: white;
+        font-size: 16px;
+        text-align: center;
+        outline: none;
+    }
+
+    .name-box input::placeholder {
+        color: rgba(255,255,255,0.5);
+    }
+
+    .start-btn {
+        background: linear-gradient(135deg, #27ae60, #2ecc71);
+        color: white;
+        border: none;
+        padding: 16px 50px;
+        font-size: 20px;
+        border-radius: 14px;
+        font-weight: bold;
+        box-shadow: 0 8px 0 #1e8449, 0 12px 25px rgba(0,0,0,0.3);
+        z-index: 2;
+        transition: all 0.15s;
+    }
+
+    .start-btn:active {
+        transform: translateY(5px);
+        box-shadow: 0 3px 0 #1e8449;
+    }
+
+    #help-btn {
+        position: absolute;
+        bottom: 22px;
+        left: 20px;
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+        padding: 10px 18px;
+        border-radius: 25px;
+        font-size: 15px;
+        font-weight: bold;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+        z-index: 5;
+        border: 2px solid rgba(255,255,255,0.3);
+    }
+
+    #help-modal {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.85);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 200;
+        padding: 20px;
+    }
+
+    .help-content {
+        background: linear-gradient(135deg, #1a1a2e, #16213e);
+        border-radius: 18px;
+        padding: 25px 20px;
+        max-width: 340px;
+        width: 100%;
+        border: 2px solid #f1c40f;
+        box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+        text-align: right;
+        max-height: 80%;
+        overflow-y: auto;
+    }
+
+    .help-content h2 {
+        color: #f1c40f;
+        text-align: center;
+        margin-bottom: 18px;
+        font-size: 22px;
+    }
+
+    .help-content ul {
+        list-style: none;
+        font-size: 14.5px;
+        line-height: 1.9;
+        color: white;
+    }
+
+    .help-content li {
+        margin-bottom: 10px;
+        padding-right: 8px;
+        border-right: 3px solid #f1c40f;
+        color: white;
+    }
+
+    .help-definition {
+        background: rgba(241, 196, 15, 0.1);
+        border-radius: 10px;
+        padding: 12px;
+        margin: 15px 0;
+        font-size: 14px;
+        line-height: 1.8;
+        color: white;
+        border: 1px solid rgba(241, 196, 15, 0.3);
+    }
+
+    .help-definition strong {
+        color: #f1c40f;
+    }
+
+    .close-help {
+        display: block;
+        width: 100%;
+        margin-top: 20px;
+        padding: 12px;
+        background: #e74c3c;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    #game-over {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 15, 26, 0.95);
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+        color: white;
+        text-align: center;
+        padding: 25px;
+    }
+
+    #game-over h1 {
+        font-size: 26px;
+        margin-bottom: 18px;
+        color: #f1c40f;
+    }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="road">
+        <div class="road-edge left"></div>
+        <div class="road-edge right"></div>
+        <div class="lane-divider" id="lane-divider"></div>
+    </div>
+
+    <div id="sign">اعداد زوج بگیر</div>
+
+    <div id="hud">
+        <div>امتیاز: <span id="score">۰</span></div>
+        <div id="lives">جان: ❤️❤️❤️</div>
+    </div>
+
+    <div id="speedometer">
+        <div class="label">سرعت</div>
+        <div id="speed-value">۰</div>
+        <div class="unit">km/h</div>
+    </div>
+
+    <div id="player-name-display"></div>
+
+    <div id="player">
+        <div class="wheel left"></div>
+        <div class="wheel right"></div>
+        <div class="wheel left back"></div>
+        <div class="wheel right back"></div>
+        <div class="car-body"></div>
+        <div class="car-cabin"></div>
+        <div class="car-headlight left"></div>
+        <div class="car-headlight right"></div>
+        <div class="car-taillight left"></div>
+        <div class="car-taillight right"></div>
+    </div>
+
+    <div id="controls">
+        <div class="control-row">
+            <button class="btn" id="up-btn">▲</button>
+        </div>
+        <div class="control-row">
+            <button class="btn" id="right-btn">▶</button>
+            <button class="btn" id="down-btn">▼</button>
+            <button class="btn" id="left-btn">◀</button>
+        </div>
+    </div>
+
+    <div id="message"></div>
+
+    <div id="start-screen">
+        <div class="bg-circle"></div>
+        <div class="bg-circle"></div>
+        <div class="bg-circle"></div>
+
+        <div class="start-title">بازی ماشینی زوج و فرد</div>
+        <div class="start-subtitle">یادگیری اعداد زوج و فرد به روش بازی</div>
+        <div class="designer">طراح: معاونت آموزش ابتدایی فارس</div>
+
+        <div class="start-car">
+            <div class="wheel left"></div>
+            <div class="wheel right"></div>
+            <div class="wheel left back"></div>
+            <div class="wheel right back"></div>
+            <div class="car-body"></div>
+            <div class="car-cabin"></div>
+            <div class="car-headlight left"></div>
+            <div class="car-headlight right"></div>
+            <div class="car-taillight left"></div>
+            <div class="car-taillight right"></div>
+        </div>
+
+        <div class="name-box">
+            <label>اسم خودت رو وارد کن</label>
+            <input type="text" id="player-name-input" placeholder="..." maxlength="12">
+        </div>
+
+        <button class="start-btn" onclick="startGame()">شروع بازی</button>
+
+        <div id="help-btn" onclick="showHelp()">راهنما</div>
+    </div>
+
+    <div id="help-modal">
+        <div class="help-content">
+            <h2>راهنمای بازی</h2>
+            
+            <div class="help-definition">
+                <strong>عدد زوج:</strong> عددی است که رقم یکان آن ۰، ۲، ۴، ۶ یا ۸ باشد.<br>
+                <strong>عدد فرد:</strong> عددی است که رقم یکان آن ۱، ۳، ۵، ۷ یا ۹ باشد.
+            </div>
+
+            <ul>
+                <li>ماشین را با دکمه‌های چهار جهته حرکت بده (تا وقتی انگشتت روی دکمه باشد حرکت می‌کند)</li>
+                <li>اعدادی که با تابلو بالای صفحه مطابقت دارند را بگیر</li>
+                <li>اگر عدد اشتباه بگیری، یک جان از دست می‌دهی</li>
+                <li>عدد بنفش ویژه (ستاره) اگر درست باشد، جان اضافه می‌دهد</li>
+                <li>هر ۱۵ ثانیه قانون بازی (زوج یا فرد) عوض می‌شود</li>
+                <li>سرعت پایین آمدن اعداد به مرور در ۵ دقیقه افزایش می‌یابد</li>
+                <li>سه جان اولیه داری و حداکثر ۵ جان می‌توانی داشته باشی</li>
+            </ul>
+            <button class="close-help" onclick="hideHelp()">متوجه شدم</button>
+        </div>
+    </div>
+
+    <div id="game-over">
+        <h1>بازی تمام شد!</h1>
+        <div style="font-size:16px; margin:10px 0;">امتیاز نهایی: <span id="final-score">۰</span></div>
+        <button class="start-btn" onclick="location.reload()">دوباره بازی کن</button>
+    </div>
+</div>
+
+<script>
+    // تبدیل عدد انگلیسی به فارسی
+    function toPersianNumber(num) {
+        const persianDigits = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+        return String(num).replace(/\d/g, d => persianDigits[d]);
+    }
+
+    const LANE_POSITIONS = [27.5, 72.5];
+    let playerLane = 0;
+    let playerBottom = 160;
+    const MIN_BOTTOM = 80;
+    const MAX_BOTTOM = 420;
+    const MOVE_SPEED = 5.5;
+
+    let score = 0;
+    let lives = 3;
+    const maxLives = 5;
+    let isEvenMode = true;
+    let gameRunning = false;
+    let objects = [];
+    let lastSpawn = 0;
+    let modeChangeTime = 0;
+    let playerName = "";
+    let isPausedForModeChange = false;
+
+    let gameStartTime = 0;
+    const MAX_FALL_SPEED = 4.8;
+    const RAMP_DURATION = 300000; // ۵ دقیقه
+    let currentFallSpeed = 0.3;
+
+    let roadOffset = 0;
+    const laneDivider = document.getElementById('lane-divider');
+
+    let moveLeft = false;
+    let moveRight = false;
+    let moveUp = false;
+    let moveDown = false;
+    let moveInterval = null;
+
+    let audioCtx = null;
+
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }
+
+    function playCorrectSound() {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = 880;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.3);
+    }
+
+    function playWrongSound() {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = 200;
+        osc.type = 'sawtooth';
+        gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.4);
+    }
+
+    function playVibrateSound() {
+        initAudio();
+        const now = audioCtx.currentTime;
+        for (let i = 0; i < 6; i++) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'square';
+            osc.frequency.value = 80 + (i % 2) * 40;
+            const start = now + i * 0.07;
+            gain.gain.setValueAtTime(0, start);
+            gain.gain.linearRampToValueAtTime(0.2, start + 0.02);
+            gain.gain.linearRampToValueAtTime(0, start + 0.06);
+            osc.start(start);
+            osc.stop(start + 0.07);
+        }
+    }
+
+    const player = document.getElementById('player');
+    const sign = document.getElementById('sign');
+    const scoreEl = document.getElementById('score');
+    const livesEl = document.getElementById('lives');
+    const messageEl = document.getElementById('message');
+    const container = document.getElementById('game-container');
+    const nameDisplay = document.getElementById('player-name-display');
+    const speedValueEl = document.getElementById('speed-value');
+
+    const leftBtn = document.getElementById('left-btn');
+    const rightBtn = document.getElementById('right-btn');
+    const upBtn = document.getElementById('up-btn');
+    const downBtn = document.getElementById('down-btn');
+
+    function startMove(direction) {
+        if (direction === 'left') moveLeft = true;
+        if (direction === 'right') moveRight = true;
+        if (direction === 'up') moveUp = true;
+        if (direction === 'down') moveDown = true;
+
+        if (!moveInterval) {
+            moveInterval = setInterval(() => {
+                if (!gameRunning) return;
+
+                if (moveLeft) {
+                    playerLane = 0;
+                    player.style.left = LANE_POSITIONS[0] + '%';
+                }
+                if (moveRight) {
+                    playerLane = 1;
+                    player.style.left = LANE_POSITIONS[1] + '%';
+                }
+                if (moveUp) {
+                    playerBottom = Math.min(MAX_BOTTOM, playerBottom + MOVE_SPEED);
+                    player.style.bottom = playerBottom + 'px';
+                }
+                if (moveDown) {
+                    playerBottom = Math.max(MIN_BOTTOM, playerBottom - MOVE_SPEED);
+                    player.style.bottom = playerBottom + 'px';
+                }
+            }, 16);
+        }
+    }
+
+    function stopMove(direction) {
+        if (direction === 'left') moveLeft = false;
+        if (direction === 'right') moveRight = false;
+        if (direction === 'up') moveUp = false;
+        if (direction === 'down') moveDown = false;
+
+        if (!moveLeft && !moveRight && !moveUp && !moveDown) {
+            clearInterval(moveInterval);
+            moveInterval = null;
+        }
+    }
+
+    function addHoldEvents(btn, direction) {
+        btn.addEventListener('touchstart', (e) => { e.preventDefault(); startMove(direction); });
+        btn.addEventListener('touchend', () => stopMove(direction));
+        btn.addEventListener('touchcancel', () => stopMove(direction));
+        btn.addEventListener('mousedown', () => startMove(direction));
+        btn.addEventListener('mouseup', () => stopMove(direction));
+        btn.addEventListener('mouseleave', () => stopMove(direction));
+    }
+
+    addHoldEvents(leftBtn, 'left');
+    addHoldEvents(rightBtn, 'right');
+    addHoldEvents(upBtn, 'up');
+    addHoldEvents(downBtn, 'down');
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') startMove('left');
+        if (e.key === 'ArrowRight') startMove('right');
+        if (e.key === 'ArrowUp') startMove('up');
+        if (e.key === 'ArrowDown') startMove('down');
+    });
+    document.addEventListener('keyup', (e) => {
+        if (e.key === 'ArrowLeft') stopMove('left');
+        if (e.key === 'ArrowRight') stopMove('right');
+        if (e.key === 'ArrowUp') stopMove('up');
+        if (e.key === 'ArrowDown') stopMove('down');
+    });
+
+    function updateLivesDisplay() {
+        let hearts = '';
+        for (let i = 0; i < lives; i++) hearts += '❤️';
+        for (let i = lives; i < maxLives; i++) hearts += '🖤';
+        livesEl.innerHTML = 'جان: ' + hearts;
+    }
+
+    function showMessage(text, duration = 1300) {
+        messageEl.textContent = text;
+        messageEl.style.display = 'block';
+        setTimeout(() => messageEl.style.display = 'none', duration);
+    }
+
+    function updateNumbersColor() {
+        document.querySelectorAll('.falling:not(.special)').forEach(el => {
+            el.classList.remove('even-mode', 'odd-mode');
+            el.classList.add(isEvenMode ? 'even-mode' : 'odd-mode');
+        });
+    }
+
+    function changeMode() {
+        isPausedForModeChange = true;
+        sign.classList.add('flicker');
+        playVibrateSound();
+
+        setTimeout(() => {
+            isEvenMode = !isEvenMode;
+            if (isEvenMode) {
+                sign.textContent = 'اعداد زوج بگیر';
+                sign.classList.remove('odd');
+            } else {
+                sign.textContent = 'اعداد فرد بگیر';
+                sign.classList.add('odd');
+            }
+            sign.classList.remove('flicker');
+            updateNumbersColor();
+            showMessage(isEvenMode ? 'حالا اعداد زوج!' : 'حالا اعداد فرد!', 1600);
+
+            setTimeout(() => {
+                isPausedForModeChange = false;
+            }, 800);
+        }, 700);
+
+        modeChangeTime = performance.now();
+    }
+
+    function spawnNumber() {
+        if (isPausedForModeChange) return;
+
+        const tooClose = objects.some(obj => obj.y < 130);
+        if (tooClose) return;
+
+        const isSpecial = Math.random() < 0.15;
+        const isEven = Math.random() < 0.5;
+        const value = isEven ? Math.floor(Math.random() * 25) * 2 : Math.floor(Math.random() * 25) * 2 + 1;
+
+        const lane = Math.floor(Math.random() * 2);
+        const el = document.createElement('div');
+        el.className = 'falling' + (isSpecial ? ' special' : '');
+        if (!isSpecial) {
+            el.classList.add(isEvenMode ? 'even-mode' : 'odd-mode');
+        }
+        el.textContent = toPersianNumber(value);
+        el.style.left = LANE_POSITIONS[lane] + '%';
+        el.style.top = '-60px';
+
+        container.appendChild(el);
+        objects.push({
+            el, y: -60, lane,
+            speed: currentFallSpeed,
+            type: 'number', isEven, isSpecial
+        });
+    }
+
+    function checkCollision(obj) {
+        const containerHeight = container.clientHeight;
+        const playerTop = containerHeight - playerBottom - 95;
+        const playerBottomPos = containerHeight - playerBottom;
+
+        if (obj.y + 48 > playerTop && obj.y < playerBottomPos) {
+            if (obj.lane === playerLane) return true;
+        }
+        return false;
+    }
+
+    function gameLoop(timestamp) {
+        if (!gameRunning) return;
+
+        const elapsed = timestamp - gameStartTime;
+        const progress = Math.min(elapsed / RAMP_DURATION, 1);
+        currentFallSpeed = 0.3 + (MAX_FALL_SPEED - 0.3) * progress;
+
+        const displaySpeed = Math.round(progress * 170);
+        speedValueEl.textContent = toPersianNumber(displaySpeed);
+
+        if (displaySpeed > 130) {
+            speedValueEl.style.color = '#ff3333';
+            speedValueEl.style.textShadow = '0 0 8px #ff3333';
+        } else if (displaySpeed > 90) {
+            speedValueEl.style.color = '#ffaa00';
+            speedValueEl.style.textShadow = '0 0 8px #ffaa00';
+        } else {
+            speedValueEl.style.color = '#00ff00';
+            speedValueEl.style.textShadow = '0 0 8px #00ff00';
+        }
+
+        roadOffset += currentFallSpeed * 1.8;
+        if (roadOffset > 80) roadOffset -= 80;
+        laneDivider.style.transform = `translateX(-50%) translateY(${roadOffset}px)`;
+
+        if (timestamp - modeChangeTime > 15000) {
+            changeMode();
+        }
+
+        if (!isPausedForModeChange && timestamp - lastSpawn > 1300) {
+            spawnNumber();
+            lastSpawn = timestamp;
+        }
+
+        for (let i = objects.length - 1; i >= 0; i--) {
+            const obj = objects[i];
+
+            if (!isPausedForModeChange) {
+                obj.speed = currentFallSpeed;
+                obj.y += obj.speed;
+                obj.el.style.top = obj.y + 'px';
+            }
+
+            if (checkCollision(obj)) {
+                const correct = (obj.isEven && isEvenMode) || (!obj.isEven && !isEvenMode);
+
+                if (correct) {
+                    score += obj.isSpecial ? 25 : 10;
+                    scoreEl.textContent = toPersianNumber(score);
+                    playCorrectSound();
+
+                    if (obj.isSpecial && lives < maxLives) {
+                        lives++;
+                        updateLivesDisplay();
+                        showMessage('★ جان اضافه شد!', 1100);
+                    } else {
+                        showMessage('+ امتیاز', 700);
+                    }
+                } else {
+                    lives--;
+                    updateLivesDisplay();
+                    playWrongSound();
+                    showMessage(obj.isEven ? 'این عدد زوج بود!' : 'این عدد فرد بود!', 1300);
+                    if (lives <= 0) {
+                        endGame();
+                        return;
+                    }
+                }
+
+                obj.el.remove();
+                objects.splice(i, 1);
+                continue;
+            }
+
+            if (obj.y > container.clientHeight + 60) {
+                obj.el.remove();
+                objects.splice(i, 1);
+            }
+        }
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    function showHelp() {
+        document.getElementById('help-modal').style.display = 'flex';
+    }
+
+    function hideHelp() {
+        document.getElementById('help-modal').style.display = 'none';
+    }
+
+    function startGame() {
+        initAudio();
+
+        const nameInput = document.getElementById('player-name-input');
+        playerName = nameInput.value.trim() || 'بازیکن';
+        nameDisplay.textContent = playerName;
+
+        document.getElementById('start-screen').style.display = 'none';
+        gameRunning = true;
+        score = 0;
+        lives = 3;
+        isEvenMode = true;
+        objects = [];
+        modeChangeTime = performance.now();
+        gameStartTime = performance.now();
+        lastSpawn = 0;
+        playerLane = 0;
+        playerBottom = 160;
+        currentFallSpeed = 0.3;
+        roadOffset = 0;
+        moveLeft = moveRight = moveUp = moveDown = false;
+        isPausedForModeChange = false;
+
+        scoreEl.textContent = toPersianNumber(0);
+        speedValueEl.textContent = toPersianNumber(0);
+        updateLivesDisplay();
+        sign.textContent = 'اعداد زوج بگیر';
+        sign.classList.remove('odd');
+        player.style.left = LANE_POSITIONS[0] + '%';
+        player.style.bottom = playerBottom + 'px';
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    function endGame() {
+        gameRunning = false;
+        document.getElementById('final-score').textContent = toPersianNumber(score);
+        document.getElementById('game-over').style.display = 'flex';
+    }
+
+    player.style.left = LANE_POSITIONS[0] + '%';
+    player.style.bottom = playerBottom + 'px';
+</script>
+</body>
+</html>
